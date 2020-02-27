@@ -92,7 +92,7 @@ protected:
 
     /* Returns the user space backpressure. */
     int getBufferedAmount() {
-        return (int) getAsyncSocketData()->buffer.size();
+        return (int) getAsyncSocketData()->buffer.length();
     }
 
     /* Returns the remote IP address or empty string on failure */
@@ -118,13 +118,24 @@ protected:
         /* We are limited if we have a per-socket buffer */
         if (asyncSocketData->buffer.length()) {
             /* Write off as much as we can */
-            int written = us_socket_write(SSL, (us_socket_t *) this, asyncSocketData->buffer.data(), (int) asyncSocketData->buffer.length(), /*nextLength != 0 | */length);
+            while(1) {
+                auto [buf, len] = asyncSocketData->buffer.getBeginning();
+                auto addendum =
+                        us_socket_write(SSL, (us_socket_t *) this, buf, (int) len, len < asyncSocketData->buffer.length());
+                if(!addendum) {
+                    break;
+                }
+                asyncSocketData->buffer.popBeginning(addendum);
+                if(!asyncSocketData->buffer.length()) {
+                    break;
+                }
+            };
 
             /* On failure return, otherwise continue down the function */
-            if ((unsigned int) written < asyncSocketData->buffer.length()) {
+            if (asyncSocketData->buffer.length()) {
 
                 /* Update buffering (todo: we can do better here if we keep track of what happens to this guy later on) */
-                asyncSocketData->buffer = asyncSocketData->buffer.substr(written);
+//                asyncSocketData->buffer.popBeginning(written);
 
                 if (optionally) {
                     /* Thankfully we can exit early here */

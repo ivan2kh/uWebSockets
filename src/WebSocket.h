@@ -33,7 +33,7 @@ struct WebSocket : AsyncSocket<SSL> {
 private:
     typedef AsyncSocket<SSL> Super;
 
-    void *init(bool perMessageDeflate, bool slidingCompression, std::string &&backpressure) {
+    void *init(bool perMessageDeflate, bool slidingCompression, WebSocketData::Deque &&backpressure) {
         new (us_socket_ext(SSL, (us_socket_t *) this)) WebSocketData(perMessageDeflate, slidingCompression, std::move(backpressure));
         return this;
     }
